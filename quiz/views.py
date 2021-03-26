@@ -15,40 +15,42 @@ IST = pytz.timezone('Asia/Kolkata')
 @login_required
 def answerView(request):
     global IST
-    profile=request.user.profile
-    old_id = profile.ques_id
-    if request.is_ajax() and request.method=="POST":
-        form=AnswerForm(request.POST)
-        if form.is_valid():
-            tempAnswer=form.cleaned_data.get('answer')
-            actualAnswer=getObj(profile).answer
-            if  tempAnswer.lower() == actualAnswer.lower():
-                profile.ques_id+=1
-                profile.correct+=1
-                profile.score+=10
-                profile.data+='<'+str(datetime.now(tz=IST).isoformat())+','+str(profile.score)+'>'
-                profile.save()
-            winner=checkForWin(profile)
-            if winner:
-                data={'winner':winner}
-            else:
-                profileObj=getObj(profile)
-                question={'text':profileObj.question,'num':profileObj.ques_num}
-                assets=profileObj.asset
-                if(profile.ques_id == old_id):
-                    data={'question':question,'winner':winner,'assets':assets,'correct':False}
+    if datetime.now(tz=IST) < datetime(2021,12,27,0,0,0,0,tzinfo=IST):
+        profile=request.user.profile
+        old_id = profile.ques_id
+        if request.is_ajax() and request.method=="POST":
+            form=AnswerForm(request.POST)
+            if form.is_valid():
+                tempAnswer=form.cleaned_data.get('answer')
+                actualAnswer=getObj(profile).answer
+                if  tempAnswer.lower() == actualAnswer.lower():
+                    profile.ques_id+=1
+                    profile.correct+=1
+                    profile.score+=10
+                    profile.data+='<'+str(datetime.now(tz=IST).isoformat())+','+str(profile.score)+'>'
+                    profile.save()
+                winner=checkForWin(profile)
+                if winner:
+                    data={'winner':winner}
                 else:
-                    data={'question':question,'winner':winner,'assets':assets,'correct':True}
-            return JsonResponse(data)
+                    profileObj=getObj(profile)
+                    question={'text':profileObj.question,'num':profileObj.ques_num}
+                    assets=profileObj.asset
+                    if(profile.ques_id == old_id):
+                        data={'question':question,'winner':winner,'assets':assets,'correct':False}
+                    else:
+                        data={'question':question,'winner':winner,'assets':assets,'correct':True}
+                return JsonResponse(data)
+        else:
+            if checkForWin(profile):
+                return redirect(reverse_lazy('winner'))
+            form=AnswerForm()
+            profileObj=getObj(profile)
+            question={'text':profileObj.question,'num':profileObj.ques_num}
+            assets=profileObj.asset
+            return render(request,'quiz.html',{'question':question,'form':form,'assets':assets})
     else:
-        if checkForWin(profile):
-            return redirect(reverse_lazy('winner'))
-        form=AnswerForm()
-        profileObj=getObj(profile)
-        question={'text':profileObj.question,'num':profileObj.ques_num}
-        assets=profileObj.asset
-        return render(request,'quiz.html',{'question':question,'form':form,'assets':assets})
-
+        return redirect(reverse_lazy('conclude'))
 @login_required
 def getObj(profile):
     while True:
